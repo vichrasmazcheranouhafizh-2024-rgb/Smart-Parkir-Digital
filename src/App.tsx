@@ -3,9 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { INITIAL_LOCATIONS, INITIAL_LOGS, INITIAL_TRANSACTIONS } from './data';
 import { ParkingLocation, ParkingSlot, Booking, CheckInLog, Transaction, Role } from './types';
+import {
+  db,
+  addBooking as dbAddBooking,
+  addCheckInLog as dbAddLog,
+  addTransaction as dbAddTx,
+  getActiveBookings as dbGetActiveBookings,
+  getCheckInLogs as dbGetLogs,
+  getTransactions as dbGetTransactions,
+  getBookingByID,
+  updateBookingStatus,
+  updateLogDirection,
+  seedIfEmpty,
+} from './db';
 
 // Importing UI screens from modular component barrel
 import {
@@ -39,24 +52,65 @@ export default function App() {
   const [appState, setAppState] = useState<AppState>('splash');
   const [currentRole, setCurrentRole] = useState<Role>('user');
   
-  // Simulated Persistent Database Collections
+  // Persistent Database Collections (synced with IndexedDB)
   const [locations, setLocations] = useState<ParkingLocation[]>(INITIAL_LOCATIONS);
   const [logs, setLogs] = useState<CheckInLog[]>(INITIAL_LOGS);
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
-  const [walletBalance, setWalletBalance] = useState<number>(45000);
+  const [walletBalance, setWalletBalance] = useState<number>(() => {
+    const saved = localStorage.getItem('parkir_wallet_balance');
+    return saved ? parseInt(saved, 10) : 45000;
+  });
   const [activeBookings, setActiveBookings] = useState<Booking[]>([]);
+  const [dbReady, setDbReady] = useState(false);
 
   // Selection states
   const [selectedLocation, setSelectedLocation] = useState<ParkingLocation | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<ParkingSlot | null>(null);
   const [latestBooking, setLatestBooking] = useState<Booking | null>(null);
 
+  // ===========================
+  // IndexedDB Init & Sync
+  // ===========================
+  useEffect(() => {
+    async function initDB() {
+      try {
+        // Seed initial data if DB is empty
+        await seedIfEmpty(INITIAL_LOGS, INITIAL_TRANSACTIONS);
+
+        // Load persisted data
+        const [savedLogs, savedTx, savedBookings] = await Promise.all([
+          dbGetLogs(),
+          dbGetTransactions(),
+          dbGetActiveBookings(),
+        ]);
+        
+        if (savedLogs.length > 0) setLogs(savedLogs);
+        if (savedTx.length > 0) setTransactions(savedTx);
+        if (savedBookings.length > 0) {
+          setActiveBookings(savedBookings);
+          setLatestBooking(savedBookings[savedBookings.length - 1]);
+        }
+        
+        setDbReady(true);
+      } catch (err) {
+        console.error('IndexedDB init error:', err);
+        setDbReady(true); // fallback to in-memory
+      }
+    }
+    initDB();
+  }, []);
+
+  // Persist wallet balance to localStorage
+  useEffect(() => {
+    localStorage.setItem('parkir_wallet_balance', walletBalance.toString());
+  }, [walletBalance]);
+
   // Quick reset triggers for local testing
   const handleResetOnboarding = () => {
     setAppState('onboarding');
   };
 
-  const handleWalletTopUp = (amount: number) => {
+  const handleWalletTopUp = useCallback(async (amount: number) => {
     setWalletBalance(prev => prev + amount);
     // Add transaction log
     const newTx: Transaction = {
@@ -68,8 +122,9 @@ export default function App() {
       timeAgo: 'Baru Saja'
     };
     setTransactions(prev => [newTx, ...prev]);
+    if (dbReady) await dbAddTx(newTx);
     alert(`E-wallet Anda sukses diisi sebesar Rp${amount.toLocaleString('id-ID')} !`);
-  };
+  }, [dbReady]);
 
   const handleApplyOverride = (slotID: string, newStatus: ParkingSlot['status']) => {
     if (!selectedLocation) return;
@@ -95,7 +150,7 @@ export default function App() {
     }));
   };
 
-  const handleConfirmCheckout = (paymentMethod: string, estArrival: string, totalAmount: number) => {
+  const handleConfirmCheckout = useCallback(async (paymentMethod: string, estArrival: string, totalAmount: number) => {
     if (!selectedLocation || !selectedSlot) return;
 
     if (walletBalance < totalAmount) {
@@ -106,9 +161,12 @@ export default function App() {
     // Deduct E-wallet balance
     setWalletBalance(prev => prev - totalAmount);
 
+    // Generate unique booking ID
+    const bookingID = `BK-${Date.now().toString(36).toUpperCase()}`;
+
     // Create Booking node
     const newBooking: Booking = {
-      bookingID: 'BK-2026-0001',
+      bookingID,
       locationID: selectedLocation.id,
       locationName: selectedLocation.name,
       locationRegion: selectedLocation.region,
@@ -142,7 +200,7 @@ export default function App() {
     const newLog: CheckInLog = {
       id: `LOG-${Date.now()}`,
       plateNumber: 'L 1234 AB',
-      bookingID: 'BK-2026-0001',
+      bookingID: bookingID,
       type: 'Booking',
       slotID: selectedSlot.slotID,
       time: 'Baru Saja',
@@ -150,6 +208,15 @@ export default function App() {
       locationName: selectedLocation.name,
     };
     setLogs(prev => [newLog, ...prev]);
+
+    // Persist to IndexedDB
+    if (dbReady) {
+      await Promise.all([
+        dbAddBooking(newBooking),
+        dbAddTx(newTx),
+        dbAddLog(newLog),
+      ]);
+    }
 
     // Update spot status to Occupied in db model
     setLocations(prevLocs => prevLocs.map(loc => {
@@ -170,36 +237,96 @@ export default function App() {
 
     // Route to tickets receipt
     setAppState('success_ticket');
-  };
+  }, [selectedLocation, selectedSlot, walletBalance, dbReady]);
 
   // QR Scanning verifications inside Petugas Dashboard
-  const handleVerifyQRScan = (code: string) => {
-    // Locate booking and mark as check-in successful
-    setActiveBookings([]); // clears current booking simulating check-in completion success
-    
-    // Add check-in validation log
-    const updatedLogs = logs.map(l => {
-      if (l.bookingID === code) {
-        return { ...l, direction: 'Check-Out' as const, time: 'Telah Masuk' };
+  const handleVerifyQRScan = useCallback(async (code: string): Promise<{ success: boolean; message: string; booking?: Booking }> => {
+    // Try to parse as JSON (from real QR scan)
+    let bookingID = code;
+    try {
+      const parsed = JSON.parse(code);
+      if (parsed.bookingID) {
+        bookingID = parsed.bookingID;
       }
-      return l;
-    });
-    setLogs(updatedLogs);
-  };
+    } catch {
+      // Not JSON, treat as plain booking ID
+      bookingID = code.trim().toUpperCase();
+    }
 
-  const handleTriggerCheckIn = (logID: string) => {
+    // Lookup in IndexedDB first
+    if (dbReady) {
+      const booking = await getBookingByID(bookingID);
+      if (booking) {
+        if (booking.status === 'CheckedIn') {
+          return { success: false, message: `Booking ${bookingID} sudah di-check-in sebelumnya.` };
+        }
+        if (booking.status === 'Completed' || booking.status === 'Cancelled') {
+          return { success: false, message: `Booking ${bookingID} sudah ${booking.status === 'Completed' ? 'selesai' : 'dibatalkan'}.` };
+        }
+
+        // Valid! Update status
+        await updateBookingStatus(bookingID, 'CheckedIn');
+        setActiveBookings(prev => prev.map(b => b.bookingID === bookingID ? { ...b, status: 'CheckedIn' } : b));
+        setLatestBooking(prev => prev && prev.bookingID === bookingID ? { ...prev, status: 'CheckedIn' } : prev);
+
+        // Update log direction
+        const allLogs = await dbGetLogs();
+        const matchingLog = allLogs.find(l => l.bookingID === bookingID);
+        if (matchingLog) {
+          await updateLogDirection(matchingLog.id, 'Check-Out');
+        }
+
+        // Update in-memory logs
+        setLogs(prev => prev.map(l => 
+          l.bookingID === bookingID ? { ...l, direction: 'Check-Out' as const, time: 'Terverifikasi' } : l
+        ));
+
+        return { 
+          success: true, 
+          message: `✅ Booking ${bookingID} terverifikasi! Slot: ${booking.slotID}, Lokasi: ${booking.locationName}`,
+          booking
+        };
+      }
+    }
+
+    // Fallback: check in-memory active bookings
+    const inMemBooking = activeBookings.find(b => b.bookingID === bookingID);
+    if (inMemBooking) {
+      setActiveBookings(prev => prev.map(b => b.bookingID === bookingID ? { ...b, status: 'CheckedIn' } : b));
+      setLogs(prev => prev.map(l => 
+        l.bookingID === bookingID ? { ...l, direction: 'Check-Out' as const, time: 'Terverifikasi' } : l
+      ));
+      return { 
+        success: true, 
+        message: `✅ Booking ${bookingID} terverifikasi! Slot: ${inMemBooking.slotID}, Lokasi: ${inMemBooking.locationName}`,
+        booking: inMemBooking
+      };
+    }
+
+    // Also accept BK- prefix for simulation
+    if (bookingID.startsWith('BK-')) {
+      setLogs(prev => prev.map(l => 
+        l.bookingID === bookingID ? { ...l, direction: 'Check-Out' as const, time: 'Terverifikasi' } : l
+      ));
+      return { success: true, message: `✅ Booking ${bookingID} terverifikasi! (simulasi)` };
+    }
+
+    return { success: false, message: `❌ Booking ID "${bookingID}" tidak ditemukan atau tidak aktif.` };
+  }, [dbReady, activeBookings]);
+
+  const handleTriggerCheckIn = useCallback(async (logID: string) => {
     setLogs(prev => prev.map(l => l.id === logID ? { ...l, direction: 'Check-Out' } : l));
-    // Increase capacity occupied simulation
     setLocations(prev => prev.map(loc => ({ ...loc, availableCount: Math.max(0, loc.availableCount - 1) })));
-  };
+    if (dbReady) await updateLogDirection(logID, 'Check-Out');
+  }, [dbReady]);
 
-  const handleTriggerCheckOut = (logID: string) => {
+  const handleTriggerCheckOut = useCallback(async (logID: string) => {
     setLogs(prev => prev.map(l => l.id === logID ? { ...l, direction: 'Check-In' } : l));
-    // Decrease occupied capacity simulation
     setLocations(prev => prev.map(loc => ({ ...loc, availableCount: Math.min(120, loc.availableCount + 1) })));
-  };
+    if (dbReady) await updateLogDirection(logID, 'Check-In');
+  }, [dbReady]);
 
-  const handleCheckInBooking = (bookingID: string) => {
+  const handleCheckInBooking = useCallback(async (bookingID: string) => {
     setActiveBookings(prev => prev.map(b => b.bookingID === bookingID ? { ...b, status: 'CheckedIn' } : b));
     setLatestBooking(prev => {
       if (prev && prev.bookingID === bookingID) {
@@ -207,7 +334,8 @@ export default function App() {
       }
       return prev;
     });
-  };
+    if (dbReady) await updateBookingStatus(bookingID, 'CheckedIn');
+  }, [dbReady]);
 
   // Router dispatcher
   const renderCurrentScreen = () => {
@@ -326,9 +454,7 @@ export default function App() {
         return (
           <PetugasScanner 
             onBack={() => setAppState('dashboard')}
-            onVerifyCode={(code) => {
-              handleVerifyQRScan(code);
-            }}
+            onVerifyCode={handleVerifyQRScan}
           />
         );
 
@@ -370,4 +496,5 @@ export default function App() {
     </div>
   );
 }
+
 
