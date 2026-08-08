@@ -16,12 +16,7 @@ function RealQRCode({ booking }: { booking: Booking }) {
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    const qrPayload = JSON.stringify({
-      bookingID: booking.bookingID,
-      slotID: booking.slotID,
-      locationName: booking.locationName,
-      timestamp: booking.bookingTime,
-    });
+    const qrPayload = `PARKWISE:${booking.bookingID}`;
 
     QRCode.toCanvas(canvasRef.current, qrPayload, {
       width: 200,

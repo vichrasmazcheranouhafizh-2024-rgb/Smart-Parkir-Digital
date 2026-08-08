@@ -260,16 +260,23 @@ export default function App() {
 
   // QR Scanning verifications inside Petugas Dashboard
   const handleVerifyQRScan = useCallback(async (code: string): Promise<{ success: boolean; message: string; booking?: Booking }> => {
-    // Try to parse as JSON (from real QR scan)
-    let bookingID = code;
-    try {
-      const parsed = JSON.parse(code);
-      if (parsed.bookingID) {
-        bookingID = parsed.bookingID;
+    const rawCode = code.trim();
+    let bookingID = rawCode;
+
+    if (rawCode.toUpperCase().startsWith('PARKWISE:')) {
+      bookingID = rawCode.split(':').slice(1).join(':').trim().toUpperCase();
+    } else if (rawCode.startsWith('{') || rawCode.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(rawCode) as Record<string, unknown>;
+        const candidate = parsed.bookingID ?? parsed.bookingId ?? parsed.id;
+        if (typeof candidate === 'string' && candidate.trim()) {
+          bookingID = candidate.trim().toUpperCase();
+        }
+      } catch {
+        bookingID = rawCode.toUpperCase();
       }
-    } catch {
-      // Not JSON, treat as plain booking ID
-      bookingID = code.trim().toUpperCase();
+    } else {
+      bookingID = rawCode.toUpperCase();
     }
 
     // Lookup in IndexedDB first
