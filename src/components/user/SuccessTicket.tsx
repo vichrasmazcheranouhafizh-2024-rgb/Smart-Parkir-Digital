@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import { CheckCircle, Navigation, Home, QrCode, MapPin, Clock } from 'lucide-react';
+import { CheckCircle, Navigation, Home, QrCode, MapPin, Clock, HardDriveDownload } from 'lucide-react';
 import { Booking } from '../../types';
+import { uploadBookingTicket, isSupabaseConfigured } from '../../lib/supabase';
 
 interface SuccessTicketProps {
   booking: Booking;
@@ -46,12 +47,50 @@ function RealQRCode({ booking }: { booking: Booking }) {
 
   return (
     <div className="flex items-center justify-center bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
-      <canvas ref={canvasRef} className="w-40 h-40" />
+      <canvas id="ticket-qr-canvas" ref={canvasRef} className="w-40 h-40" />
     </div>
   );
 }
 
 export default function SuccessTicket({ booking, onGoHome }: SuccessTicketProps) {
+  const [uploadState, setUploadState] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [uploadMessage, setUploadMessage] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const uploadTicket = async () => {
+      if (!isSupabaseConfigured()) {
+        return;
+      }
+
+      setUploadState('uploading');
+      setUploadMessage('Mengunggah tiket ke Supabase storage...');
+
+      const canvas = document.querySelector<HTMLCanvasElement>('#ticket-qr-canvas');
+      if (!canvas) {
+        if (!cancelled) {
+          setUploadState('error');
+          setUploadMessage('QR belum siap untuk diunggah.');
+        }
+        return;
+      }
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const result = await uploadBookingTicket(booking, dataUrl);
+      if (!cancelled) {
+        setUploadState(result.ok ? 'success' : 'error');
+        setUploadMessage(result.message);
+      }
+    };
+
+    uploadTicket();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [booking]);
+
   return (
     <div className="flex-grow flex flex-col justify-center px-4 py-8 max-w-md mx-auto w-full select-none relative overflow-hidden bg-slate-50 min-h-[850px] shadow-2xl rounded-3xl border">
       <div className="absolute top-0 left-0 w-full h-64 bg-indigo-600/5 rounded-b-[50%] blur-3xl -z-10" />
@@ -81,6 +120,12 @@ export default function SuccessTicket({ booking, onGoHome }: SuccessTicketProps)
           <p className="text-[10px] font-bold text-slate-500 text-center px-4 leading-relaxed">
             Kode QR Reservasi Anda terverifikasi di database lokal. Tunjukkan ke scanner pintu gerbang parkir.
           </p>
+          {isSupabaseConfigured() && (
+            <div className="mt-2 flex items-center gap-2 text-[10px] font-semibold text-slate-600">
+              <HardDriveDownload size={12} />
+              <span>{uploadState === 'uploading' ? uploadMessage : uploadMessage}</span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-4 text-left">
