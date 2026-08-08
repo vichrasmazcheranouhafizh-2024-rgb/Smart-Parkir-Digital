@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Plus, Minus, Layers } from 'lucide-react';
-import { ParkingLocation, ParkingSlot, Role } from '../../types';
+import { ParkingLocation, ParkingSlot } from '../../types';
 
 interface AdminSlotOverrideProps {
   location: ParkingLocation;
@@ -16,22 +16,37 @@ export default function AdminSlotOverride({
   onLogout
 }: AdminSlotOverrideProps) {
   const [selectedLvl, setSelectedLvl] = useState<'L2' | 'L3' | 'L4'>('L2');
-  const [selectedSlot, setSelectedSlot] = useState<ParkingSlot>(location.slots[4]); // A05/B2
+  const [selectedSlot, setSelectedSlot] = useState<ParkingSlot | null>(null);
   const [overrideStatus, setOverrideStatus] = useState<ParkingSlot['status']>('Selected');
+  const [feedback, setFeedback] = useState('');
 
   const slots = location.slots;
   const zoneA = slots.filter(s => s.zone === 'A');
   const zoneB = slots.filter(s => s.zone === 'B');
 
+  useEffect(() => {
+    const fallbackSlot = location.slots.find(s => s.slotID === 'A05') ?? location.slots.find(s => s.status === 'Available') ?? location.slots[0] ?? null;
+    setSelectedSlot((prev) => prev && location.slots.some(s => s.slotID === prev.slotID) ? prev : fallbackSlot);
+    setOverrideStatus((prev) => fallbackSlot ? (fallbackSlot.status as ParkingSlot['status']) : prev);
+  }, [location]);
+
+  const currentSlot = useMemo(() => selectedSlot ?? location.slots[0] ?? null, [selectedSlot, location.slots]);
+
   const handleSelectSlot = (slot: ParkingSlot) => {
     setSelectedSlot(slot);
     setOverrideStatus(slot.status);
+    setFeedback(`Slot ${slot.slotID} dipilih.`);
   };
 
   const handleApply = () => {
-    onApplyOverride(selectedSlot.slotID, overrideStatus);
-    alert(`Status slot ${selectedSlot.slotID} diperbarui menjadi ${overrideStatus}!`);
+    if (!currentSlot) return;
+    onApplyOverride(currentSlot.slotID, overrideStatus);
+    setFeedback(`Status slot ${currentSlot.slotID} diperbarui menjadi ${overrideStatus}.`);
   };
+
+  if (!currentSlot) {
+    return null;
+  }
 
   return (
     <div className="flex-1 min-h-screen bg-slate-100 flex text-slate-800 select-none">
@@ -142,7 +157,7 @@ export default function AdminSlotOverride({
                 <span className="text-lg font-black text-slate-300 w-8 text-center">A</span>
                 <div className="flex gap-2">
                   {zoneA.map(s => {
-                    const isFocus = selectedSlot.slotID === s.slotID;
+                    const isFocus = currentSlot.slotID === s.slotID;
                     const statusClass = 
                       isFocus ? 'border-2 border-indigo-600 bg-indigo-50/50 text-indigo-700 font-extrabold ring-4 ring-indigo-50 shadow-md scale-105' :
                       s.status === 'Occupied' ? 'bg-slate-300 text-slate-500' :
@@ -183,7 +198,7 @@ export default function AdminSlotOverride({
                 <span className="text-lg font-black text-slate-300 w-8 text-center">B</span>
                 <div className="flex gap-2">
                   {zoneB.map(s => {
-                    const isFocus = selectedSlot.slotID === s.slotID;
+                    const isFocus = currentSlot.slotID === s.slotID;
                     const statusClass = 
                       isFocus ? 'border-2 border-indigo-600 bg-indigo-50/50 text-indigo-700 font-extrabold ring-4 ring-indigo-50 shadow-md scale-105' :
                       s.status === 'Occupied' ? 'bg-slate-300 text-slate-500' :
@@ -245,7 +260,7 @@ export default function AdminSlotOverride({
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none">Status Override</h4>
                   <span className="bg-indigo-50 text-indigo-700 text-[10px] font-black px-2.5 py-1 rounded border border-indigo-100 font-mono">
-                    ID: {selectedSlot.slotID}
+                    ID: {currentSlot.slotID}
                   </span>
                 </div>
 
@@ -254,7 +269,7 @@ export default function AdminSlotOverride({
                   <div className="flex justify-between items-center text-xs font-semibold text-slate-400 border-b pb-2.5">
                     <span>Status Saat Ini</span>
                     <span className="text-indigo-600 font-bold flex items-center gap-1 leading-none">
-                      <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse inline-block" /> {selectedSlot.status}
+                      <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse inline-block" /> {currentSlot.status}
                     </span>
                   </div>
 
@@ -302,6 +317,12 @@ export default function AdminSlotOverride({
                     </label>
                   </div>
                 </div>
+
+                {feedback && (
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-semibold text-emerald-700">
+                    {feedback}
+                  </div>
+                )}
 
                 <button 
                   onClick={handleApply}

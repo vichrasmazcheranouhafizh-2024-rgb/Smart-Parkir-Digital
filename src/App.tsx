@@ -128,25 +128,27 @@ export default function App() {
 
   const handleApplyOverride = (slotID: string, newStatus: ParkingSlot['status']) => {
     if (!selectedLocation) return;
-    
-    // Update local location grid layout
+
     setLocations(prevLocs => prevLocs.map(loc => {
-      if (loc.id === selectedLocation.id) {
-        return {
-          ...loc,
-          slots: loc.slots.map(sl => {
-            if (sl.slotID === slotID) {
-              return { ...sl, status: newStatus };
-            }
-            return sl;
-          }),
-          // Dynamically adjust count
-          availableCount: newStatus === 'Available' 
-            ? loc.availableCount + 1 
-            : (loc.slots.find(x => x.slotID === slotID)?.status === 'Available' ? loc.availableCount - 1 : loc.availableCount)
-        };
-      }
-      return loc;
+      if (loc.id !== selectedLocation.id) return loc;
+
+      const currentSlot = loc.slots.find(sl => sl.slotID === slotID);
+      if (!currentSlot) return loc;
+
+      const wasAvailable = currentSlot.status === 'Available';
+      const willBeAvailable = newStatus === 'Available';
+      const deltaAvailable = (wasAvailable && !willBeAvailable ? -1 : 0) + (!wasAvailable && willBeAvailable ? 1 : 0);
+
+      return {
+        ...loc,
+        slots: loc.slots.map(sl => {
+          if (sl.slotID === slotID) {
+            return { ...sl, status: newStatus };
+          }
+          return sl;
+        }),
+        availableCount: Math.max(0, Math.min(loc.totalCapacity, loc.availableCount + deltaAvailable)),
+      };
     }));
   };
 
@@ -400,7 +402,10 @@ export default function App() {
               locations={locations}
               transactions={transactions}
               onNavigateToLots={() => {
-                setSelectedLocation(locations[0]); // defaults to TP
+                const firstLocation = locations[0];
+                if (firstLocation) {
+                  setSelectedLocation(firstLocation);
+                }
                 setAppState('admin_lots');
               }}
               onLogout={() => setAppState('login')}
