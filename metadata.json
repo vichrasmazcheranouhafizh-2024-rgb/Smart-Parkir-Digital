@@ -1,0 +1,6 @@
+{
+  "name": "Parkir Digital Surabaya",
+  "description": "Sistem aplikasi perparkiran digital Surabaya terintegrasi untuk pencarian slot, pemesanan real-time, dashboard petugas parkir, dan monitoring admin secara interaktif.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
