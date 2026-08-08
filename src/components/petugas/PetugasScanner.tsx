@@ -26,10 +26,34 @@ export default function PetugasScanner({ onBack, onVerifyCode }: PetugasScannerP
 
   useEffect(() => {
     let cancelled = false;
-    const scanner = new Html5Qrcode('petugas-qr-reader');
-    scannerRef.current = scanner;
+    let scanner: Html5Qrcode | null = null;
+
+    const cleanupScanner = async () => {
+      if (!scanner) return;
+      try {
+        await scanner.stop();
+      } catch {
+        // Ignore cleanup errors.
+      }
+      try {
+        await scanner.clear();
+      } catch {
+        // Ignore cleanup errors.
+      }
+    };
 
     const startScanner = async () => {
+      const container = document.getElementById('petugas-qr-reader');
+      if (!container) {
+        if (!cancelled) {
+          setCameraError('Area pemindai kamera belum siap.');
+        }
+        return;
+      }
+
+      scanner = new Html5Qrcode('petugas-qr-reader');
+      scannerRef.current = scanner;
+
       try {
         await scanner.start(
           { facingMode: 'environment' },
@@ -45,10 +69,10 @@ export default function PetugasScanner({ onBack, onVerifyCode }: PetugasScannerP
               const result = await onVerifyCode(decodedText);
               setStatusMsg(result.message);
               setErrorMsg('');
-              setTimeout(() => {
+              window.setTimeout(() => {
                 lockRef.current = false;
               }, 1800);
-            } catch (err) {
+            } catch {
               setErrorMsg('Gagal memverifikasi QR. Silakan coba lagi.');
               lockRef.current = false;
             }
@@ -62,7 +86,7 @@ export default function PetugasScanner({ onBack, onVerifyCode }: PetugasScannerP
           setCameraReady(true);
           setCameraError('');
         }
-      } catch (err) {
+      } catch {
         if (!cancelled) {
           setCameraReady(false);
           setCameraError('Kamera tidak dapat diakses. Izinkan akses kamera pada perangkat Anda.');
@@ -70,14 +94,11 @@ export default function PetugasScanner({ onBack, onVerifyCode }: PetugasScannerP
       }
     };
 
-    startScanner();
+    void startScanner();
 
     return () => {
       cancelled = true;
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => undefined);
-        scannerRef.current.clear().catch(() => undefined);
-      }
+      void cleanupScanner();
       scannerRef.current = null;
     };
   }, [onVerifyCode]);
@@ -115,7 +136,11 @@ export default function PetugasScanner({ onBack, onVerifyCode }: PetugasScannerP
       <header className="w-full bg-white text-indigo-600 border-b border-slate-100 flex justify-between items-center px-4 py-4 z-50 shadow-sm relative">
         <div className="flex items-center gap-2">
           <button
-            onClick={onBack}
+            onClick={() => {
+              setErrorMsg('');
+              setStatusMsg('');
+              onBack();
+            }}
             className="p-1.5 rounded-full hover:bg-slate-100 transition-colors text-slate-600 cursor-pointer active:scale-95"
             aria-label="Kembali"
           >

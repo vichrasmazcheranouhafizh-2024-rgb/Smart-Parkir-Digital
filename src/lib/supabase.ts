@@ -70,3 +70,28 @@ export async function uploadBookingTicket(
     };
   }
 }
+
+export async function syncSnapshotToSupabase(payload: Record<string, unknown>) {
+  if (!client) {
+    return { ok: false, message: 'Supabase belum dikonfigurasi.', reason: 'not-configured' };
+  }
+
+  try {
+    const fileName = `snapshots/${Date.now()}.json`;
+    const body = JSON.stringify(payload, null, 2);
+    const { error } = await client.storage.from(bucketName).upload(fileName, body, {
+      contentType: 'application/json',
+      cacheControl: '60',
+      upsert: false,
+    });
+
+    if (error) {
+      return { ok: false, message: error.message, reason: 'upload-failed' };
+    }
+
+    return { ok: true, message: `Snapshot tersimpan di ${fileName}`, path: fileName };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { ok: false, message, reason: 'upload-error' };
+  }
+}

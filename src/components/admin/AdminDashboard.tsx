@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Calendar, Download, TrendingUp, Users, Coins, FileText, LayoutGrid, BarChart3, ParkingCircle, Landmark } from 'lucide-react';
+import { Calendar, Download, TrendingUp, Users, Coins, FileText, LayoutGrid, BarChart3, ParkingCircle, Landmark, RefreshCw } from 'lucide-react';
 import { ParkingLocation, Transaction } from '../../types';
+import { isSupabaseConfigured } from '../../lib/supabase';
 
 interface AdminDashboardProps {
   locations: ParkingLocation[];
@@ -16,6 +17,8 @@ export default function AdminDashboard({
   onLogout
 }: AdminDashboardProps) {
   const [activeMenu, setActiveMenu] = useState<'dashboard' | 'lots' | 'analytics' | 'payments'>('dashboard');
+  const [reportMessage, setReportMessage] = useState('Laporan siap diunduh.');
+  const [syncMessage, setSyncMessage] = useState(isSupabaseConfigured() ? 'Sinkronisasi Supabase aktif.' : 'Mode lokal aktif.');
 
   const metrics = useMemo(() => {
     const totalCapacity = locations.reduce((sum, location) => sum + location.totalCapacity, 0);
@@ -84,10 +87,10 @@ export default function AdminDashboard({
           </button>
 
           <button 
-            onClick={() => { setActiveMenu('analytics'); alert('Simulasi: Layanan Analisis Kota Surabaya sedang berjalan.'); }}
+            onClick={() => setActiveMenu('analytics')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
               activeMenu === 'analytics' 
-                ? 'bg-indigo-600' : 'text-slate-500 hover:bg-slate-50'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/10' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
             }`}
           >
             <BarChart3 size={16} />
@@ -95,10 +98,10 @@ export default function AdminDashboard({
           </button>
 
           <button 
-            onClick={() => { setActiveMenu('payments'); alert('Simulasi: Gerbang Pembayaran VA & QRIS Surabaya terpantau normal.'); }}
+            onClick={() => setActiveMenu('payments')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
               activeMenu === 'payments' 
-                ? 'bg-indigo-600' : 'text-slate-500 hover:bg-slate-50'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/10' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
             }`}
           >
             <Landmark size={16} />
@@ -129,14 +132,16 @@ export default function AdminDashboard({
           
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => alert('Simulasi rentang waktu tanggal diperbarui.')}
+              onClick={() => setReportMessage('Rentang 24 jam terakhir diperbarui berdasarkan data transaksi aktif.')}
               className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded-xl bg-white text-xs font-bold hover:bg-slate-50 transition-colors shadow-sm"
             >
               <Calendar size={14} className="text-slate-400" />
               24 Jam Terakhir
             </button>
             <button 
-              onClick={() => alert('Simulasi: Laporan PDF Surabaya Smart Parking diunduh!')}
+              onClick={() => {
+                setReportMessage(`Laporan ringkas siap untuk ${locations.length} lokasi dengan ${transactions.length} transaksi.`);
+              }}
               className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-500/10"
             >
               <Download size={14} />
@@ -144,6 +149,22 @@ export default function AdminDashboard({
             </button>
           </div>
         </div>
+
+        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Status Sinkronisasi</p>
+            <p className="text-sm font-semibold text-slate-700">{syncMessage}</p>
+          </div>
+          <button
+            onClick={() => setSyncMessage(isSupabaseConfigured() ? 'Sinkronisasi Supabase aktif.' : 'Mode lokal aktif.')}
+            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-600"
+          >
+            <RefreshCw size={12} />
+            Perbarui
+          </button>
+        </div>
+
+        <div className="text-[11px] font-semibold text-slate-500">{reportMessage}</div>
 
         {/* Metric Cards Row grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -200,6 +221,49 @@ export default function AdminDashboard({
 
         {/* Bento grid panel layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {activeMenu === 'analytics' ? (
+            <div className="lg:col-span-12 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Analitik Parkir</p>
+                <div className="mt-4 flex items-end gap-3">
+                  <div className="text-4xl font-black text-slate-800">{metrics.occupancyRate}%</div>
+                  <div className="text-sm font-semibold text-slate-500">tingkat keterisian saat ini</div>
+                </div>
+                <div className="mt-4 h-2 rounded-full bg-slate-100">
+                  <div className="h-2 rounded-full bg-indigo-600" style={{ width: `${Math.min(100, metrics.occupancyRate)}%` }} />
+                </div>
+                <div className="mt-3 text-xs text-slate-500">{metrics.occupiedSlots} slot terpakai dari {metrics.totalCapacity} kapasitas total.</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Rekap Pengguna</p>
+                <div className="mt-4 text-4xl font-black text-slate-800">{metrics.activeUsers.toLocaleString('id-ID')}</div>
+                <div className="mt-3 text-xs text-slate-500">Aktivitas pengguna aktif berjalan dari data booking dan transaksi real-time.</div>
+              </div>
+            </div>
+          ) : null}
+
+          {activeMenu === 'payments' ? (
+            <div className="lg:col-span-12 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Rekap Pembayaran</p>
+                  <h3 className="text-lg font-black text-slate-800">Pembayaran terkonfirmasi</h3>
+                </div>
+                <div className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">{transactions.length} transaksi</div>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {transactions.slice(0, 6).map((tx) => (
+                  <div key={tx.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-slate-700">{tx.location}</span>
+                      <span className="text-sm font-black text-indigo-600">Rp {tx.amount.toLocaleString('id-ID')}</span>
+                    </div>
+                    <div className="mt-2 text-xs text-slate-500">{tx.plateNumber} • {tx.timeAgo}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           
           {/* Real-time Map Monitoring (Left column block) */}
           <div className="lg:col-span-8 bg-white border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden flex flex-col">

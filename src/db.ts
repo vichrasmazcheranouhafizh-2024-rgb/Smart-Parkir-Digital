@@ -5,13 +5,14 @@
  */
 
 import Dexie, { type EntityTable } from 'dexie';
-import { Booking, CheckInLog, Transaction } from './types';
+import { Booking, CheckInLog, Transaction, UserProfile } from './types';
 
 // Extend Dexie with typed tables
 const db = new Dexie('ParkirDigitalSurabayaDB') as Dexie & {
   bookings: EntityTable<Booking, 'bookingID'>;
   checkInLogs: EntityTable<CheckInLog, 'id'>;
   transactions: EntityTable<Transaction, 'id'>;
+  userProfiles: EntityTable<UserProfile, 'id'>;
 };
 
 // Schema definition
@@ -19,6 +20,7 @@ db.version(1).stores({
   bookings: 'bookingID, locationID, slotID, status, bookingTime',
   checkInLogs: 'id, plateNumber, bookingID, direction, time',
   transactions: 'id, plateNumber, location, amount',
+  userProfiles: 'id, username, email, phone, vehiclePlate',
 });
 
 export { db };
@@ -73,6 +75,18 @@ export async function addTransaction(tx: Transaction): Promise<string> {
 
 export async function getTransactions(): Promise<Transaction[]> {
   return await db.transactions.toArray();
+}
+
+// ========================
+// User Profile Helpers
+// ========================
+
+export async function putUserProfile(profile: UserProfile): Promise<string> {
+  return await db.userProfiles.put(profile);
+}
+
+export async function getUserProfile(): Promise<UserProfile | undefined> {
+  return await db.userProfiles.get('user-profile');
 }
 
 // ========================

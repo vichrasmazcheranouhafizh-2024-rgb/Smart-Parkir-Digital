@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Sliders, Scan, History, MapPin, Compass, CalendarCheck, User as UserIcon, Plus, X, AlertTriangle, Loader2, Camera, Check, Wallet, CheckCircle } from 'lucide-react';
-import { ParkingLocation, Booking } from '../../types';
+import { Search, Sliders, Scan, History, MapPin, Compass, CalendarCheck, User as UserIcon, Plus, X, AlertTriangle, Loader2, Camera, Check, Wallet, CheckCircle, Save, ImagePlus } from 'lucide-react';
+import { ParkingLocation, Booking, UserProfile, createDefaultProfile } from '../../types';
+import { getUserProfile, putUserProfile } from '../../db';
 
 interface UserDashboardProps {
   locations: ParkingLocation[];
@@ -46,6 +47,12 @@ export default function UserDashboard({
   const [customTopUpVal, setCustomTopUpVal] = useState('');
   const [selectedMethod, setSelectedMethod] = useState<'qris' | 'bca_va' | 'gopay'>('qris');
   const [isTopUpProcessing, setIsTopUpProcessing] = useState(false);
+
+  // Profile editor state
+  const [profile, setProfile] = useState<UserProfile>(createDefaultProfile());
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Category filter state
   // off-street = parkir pinggir jalan raya
@@ -173,6 +180,49 @@ export default function UserDashboard({
       }
     }
   }, [activeTab, searchQuery, selectedCategory, filteredLocations.length]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadProfile = async () => {
+      const savedProfile = await getUserProfile();
+      if (!cancelled) {
+        if (savedProfile) {
+          setProfile(savedProfile);
+        } else {
+          await putUserProfile(createDefaultProfile());
+        }
+      }
+    };
+    void loadProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const saveProfile = async () => {
+    const nextProfile = { ...profile };
+    await putUserProfile(nextProfile);
+    setProfile(nextProfile);
+    setProfileMessage('Profil berhasil disimpan.');
+    setIsEditingProfile(false);
+    triggerToast('Profil Anda berhasil diperbarui.', 'success');
+  };
+
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const photoUrl = typeof reader.result === 'string' ? reader.result : profile.profilePhotoUrl;
+      const nextProfile = { ...profile, profilePhotoUrl: photoUrl };
+      setProfile(nextProfile);
+      await putUserProfile(nextProfile);
+      setProfileMessage('Foto profil berhasil diperbarui.');
+      triggerToast('Foto profil berhasil diperbarui.', 'success');
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Trigger Toast Notification safely
   const triggerToast = (msg: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -693,20 +743,128 @@ export default function UserDashboard({
                 <img 
                   alt="User Profile" 
                   className="w-full h-full object-cover" 
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGPAlcBSpjzcMKi7wUNMp1YYPSpgsHB-17kv78E72Vy4oSmHYQ-nXcW_p8k13GTB9HCnyjbgYTOtIK2gFLa4G5y7_Shmxm85qHSlkEESeDo2V3nAJNUbmYMg7yvyYU2Tb1LEiDs5tBwGikV6GkAbOUw9zDGIJHHwBBROPdvLKe2grtrULpgNM0NYqbeXa-94xki6-Whvqml4JAzjssKdyOSKUuUKI3OSZ-SU6l61ZeYcb2417fJw7ogwnB81jf0syyyaFzwIpcX6hV" 
+                  src={profile.profilePhotoUrl}
                 />
               </div>
-              <div>
-                <h4 className="text-sm font-extrabold text-slate-800">Achmad Rosihan</h4>
-                <p className="text-xs text-slate-400">achmad.rosih@ft.um.ac.id</p>
+              <div className="flex-1">
+                <h4 className="text-sm font-extrabold text-slate-800">{profile.fullName}</h4>
+                <p className="text-xs text-slate-400">{profile.email}</p>
                 <p className="text-[10px] uppercase font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded mt-1.5 inline-block">Surabaya Smart Member</p>
               </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-600"
+                aria-label="Upload foto"
+              >
+                <ImagePlus size={16} />
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
             </div>
+
+            {profileMessage ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-700">
+                {profileMessage}
+              </div>
+            ) : null}
+
+            {!isEditingProfile ? (
+              <button
+                onClick={() => setIsEditingProfile(true)}
+                className="w-full rounded-xl border border-slate-200 bg-white py-3 text-xs font-bold text-slate-700"
+              >
+                Edit Profil
+              </button>
+            ) : (
+              <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    Username
+                    <input
+                      value={profile.username}
+                      onChange={(e) => setProfile({ ...profile, username: e.target.value })}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+                    />
+                  </label>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    Nama Lengkap
+                    <input
+                      value={profile.fullName}
+                      onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+                    />
+                  </label>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    Email
+                    <input
+                      value={profile.email}
+                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+                    />
+                  </label>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    Nomor HP
+                    <input
+                      value={profile.phone}
+                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+                    />
+                  </label>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    Plat Kendaraan
+                    <input
+                      value={profile.vehiclePlate}
+                      onChange={(e) => setProfile({ ...profile, vehiclePlate: e.target.value })}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+                    />
+                  </label>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    Password
+                    <input
+                      type="password"
+                      value={profile.password}
+                      onChange={(e) => setProfile({ ...profile, password: e.target.value })}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+                    />
+                  </label>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 md:col-span-2">
+                    Alamat
+                    <input
+                      value={profile.address}
+                      onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+                    />
+                  </label>
+                </div>
+                <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+                  <span>Notifikasi Aktif</span>
+                  <input
+                    type="checkbox"
+                    checked={profile.notificationEnabled}
+                    onChange={(e) => setProfile({ ...profile, notificationEnabled: e.target.checked })}
+                    className="h-4 w-4 rounded border-slate-300"
+                  />
+                </label>
+                <div className="flex gap-2">
+                  <button onClick={saveProfile} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white">
+                    <Save size={14} />
+                    Simpan Profil
+                  </button>
+                  <button onClick={() => setIsEditingProfile(false)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600">
+                    Batal
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="border-t pt-4 space-y-3 font-medium text-xs text-slate-600">
               <div className="flex justify-between py-1 border-b border-slate-50">
+                <span>Username</span>
+                <span className="font-bold text-slate-800">{profile.username}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-50">
                 <span>Plat Kendaraan</span>
-                <span className="font-bold text-slate-800">L 1234 AB</span>
+                <span className="font-bold text-slate-800">{profile.vehiclePlate}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-50">
                 <span>E-wallet Saldo</span>
@@ -714,7 +872,7 @@ export default function UserDashboard({
               </div>
               <div className="flex justify-between py-1">
                 <span>Akun Terdaftar Sejak</span>
-                <span className="font-bold text-slate-800">11 Des 2024</span>
+                <span className="font-bold text-slate-800">{profile.joinedAt}</span>
               </div>
             </div>
 

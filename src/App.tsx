@@ -19,6 +19,7 @@ import {
   updateLogDirection,
   seedIfEmpty,
 } from './db';
+import { syncSnapshotToSupabase, isSupabaseConfigured } from './lib/supabase';
 
 // Importing UI screens from modular component barrel
 import {
@@ -104,6 +105,21 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('parkir_wallet_balance', walletBalance.toString());
   }, [walletBalance]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    const payload = {
+      walletBalance,
+      locations,
+      transactions,
+      logs,
+      activeBookings,
+      updatedAt: new Date().toISOString(),
+    };
+
+    void syncSnapshotToSupabase(payload).catch(() => undefined);
+  }, [activeBookings, locations, logs, transactions, walletBalance]);
 
   // Quick reset triggers for local testing
   const handleResetOnboarding = () => {
