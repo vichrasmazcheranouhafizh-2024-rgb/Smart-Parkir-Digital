@@ -19,7 +19,7 @@ import {
   updateLogDirection,
   seedIfEmpty,
 } from './db';
-import { syncSnapshotToSupabase, isSupabaseConfigured } from './lib/supabase';
+import { syncSnapshotToSupabase, isSupabaseConfigured, syncBookingToSupabase } from './lib/supabase';
 
 // Importing UI screens from modular component barrel
 import {
@@ -202,6 +202,7 @@ export default function App() {
 
     setActiveBookings(prev => [newBooking, ...prev]);
     setLatestBooking(newBooking);
+    void syncBookingToSupabase(newBooking).catch(() => undefined);
 
     // Create Transaction Log
     const newTx: Transaction = {

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, Sliders, Scan, History, MapPin, Compass, CalendarCheck, User as UserIcon, Plus, X, AlertTriangle, Loader2, Camera, Check, Wallet, CheckCircle, Save, ImagePlus } from 'lucide-react';
 import { ParkingLocation, Booking, UserProfile, createDefaultProfile } from '../../types';
 import { getUserProfile, putUserProfile } from '../../db';
+import { syncProfileToSupabase } from '../../lib/supabase';
 
 interface UserDashboardProps {
   locations: ParkingLocation[];
@@ -203,9 +204,13 @@ export default function UserDashboard({
     const nextProfile = { ...profile };
     await putUserProfile(nextProfile);
     setProfile(nextProfile);
-    setProfileMessage('Profil berhasil disimpan.');
+
+    const syncResult = await syncProfileToSupabase(nextProfile);
+    const successMessage = syncResult.ok ? syncResult.message : `Profil tersimpan di lokal. ${syncResult.message}`;
+
+    setProfileMessage(successMessage);
     setIsEditingProfile(false);
-    triggerToast('Profil Anda berhasil diperbarui.', 'success');
+    triggerToast(syncResult.ok ? 'Profil Anda berhasil diperbarui.' : 'Profil disimpan di lokal, sinkronisasi cloud belum tersedia.', syncResult.ok ? 'success' : 'info');
   };
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -218,8 +223,12 @@ export default function UserDashboard({
       const nextProfile = { ...profile, profilePhotoUrl: photoUrl };
       setProfile(nextProfile);
       await putUserProfile(nextProfile);
-      setProfileMessage('Foto profil berhasil diperbarui.');
-      triggerToast('Foto profil berhasil diperbarui.', 'success');
+
+      const syncResult = await syncProfileToSupabase(nextProfile);
+      const successMessage = syncResult.ok ? syncResult.message : `Foto profil tersimpan di lokal. ${syncResult.message}`;
+
+      setProfileMessage(successMessage);
+      triggerToast(syncResult.ok ? 'Foto profil berhasil diperbarui.' : 'Foto profil disimpan di lokal, sinkronisasi cloud belum tersedia.', syncResult.ok ? 'success' : 'info');
     };
     reader.readAsDataURL(file);
   };
