@@ -1,20 +1,29 @@
 # 🚗 Parkir Digital Surabaya (ParkWise)
 
-ParkWise adalah aplikasi web simulasi sistem parkir digital modern untuk Kota Surabaya. Aplikasi ini menampilkan alur multi-role yang mencakup pengguna, petugas parkir, dan admin, dengan fokus pada reservasi slot, tiket QR, pemindaian kamera, serta pengelolaan data parkir secara terstruktur.
+ParkWise adalah aplikasi web simulasi sistem parkir digital modern untuk Kota Surabaya. Aplikasi ini menggabungkan alur multi-role user, petugas parkir, dan admin dalam satu pengalaman yang terintegrasi, dengan fokus pada booking slot, tiket QR, pemindaian kamera, profil pengguna, dan penyimpanan data secara lokal maupun via Supabase.
 
 ---
 
-## ✨ Fitur Utama
+## ✨ Ringkasan Aplikasi
+
+ParkWise dirancang sebagai prototype dashboard parkir digital yang menampilkan alur pengguna nyata:
+- pengguna dapat mencari lokasi parkir, memilih slot, melakukan pembayaran simulasi, dan menerima tiket QR,
+- petugas dapat memindai QR melalui kamera perangkat untuk memverifikasi booking,
+- admin dapat melihat dan mengelola informasi slot serta status operasional parkir.
+
+---
+
+## 🚀 Fitur Utama
 
 ### 👤 Pengguna / User
 - Memilih lokasi parkir dan slot secara interaktif
 - Melihat status slot seperti Available, Occupied, Booked, dan Selected
 - Melakukan simulasi pembayaran dengan beberapa metode pembayaran
 - Mendapatkan tiket reservasi yang berisi QR code unik
-- Mengelola profil pengguna, termasuk foto profil, username, password, alamat, dan preferensi notifikasi
+- Mengelola profil pengguna, termasuk foto profil, username, password, alamat, dan notifikasi
 
 ### 👮 Petugas Parkir
-- Membuka scanner QR melalui kamera perangkat
+- Membuka scanner QR lewat kamera perangkat
 - Memindai tiket pengguna dari HP
 - Menyalakan dan mematikan flash kamera saat proses scanning
 - Melakukan validasi booking dan mengelola status check-in / check-out
@@ -35,7 +44,7 @@ ParkWise adalah aplikasi web simulasi sistem parkir digital modern untuk Kota Su
 - QRCode generation via qrcode
 - QR scanning via html5-qrcode
 - Lucide React untuk ikon UI
-- Supabase untuk integrasi storage dan sinkronisasi data opsional
+- Supabase untuk storage tiket dan sinkronisasi data opsional
 
 ---
 
@@ -97,7 +106,7 @@ src/
 
 ## 🔐 Konfigurasi Supabase
 
-Aplikasi ini sudah mendukung integrasi Supabase untuk keperluan storage tiket dan sinkronisasi data opsional.
+Aplikasi ini mendukung integrasi Supabase untuk keperluan storage tiket dan sinkronisasi data opsional.
 
 Isi nilai environment berikut pada file `.env.local`:
 
@@ -117,3 +126,11 @@ VITE_SUPABASE_FOLDER=tickets
 - QR code yang dibuat pada tiket dapat dipindai melalui kamera perangkat oleh petugas parkir.
 - Untuk pengalaman terbaik, gunakan browser yang mendukung akses kamera seperti Chrome atau Edge.
 - Supabase digunakan sebagai dukungan tambahan untuk sinkronisasi data dan storage, tanpa menghapus mode lokal yang sudah stabil.
+
+---
+
+## 📌 Status Saat Ini
+- UI role-based sudah berjalan
+- QR booking dapat dipindai oleh petugas
+- Profil pengguna sudah dapat diedit dan disimpan
+- Integrasi Supabase tersedia untuk penyimpanan dan sinkronisasi opsional
