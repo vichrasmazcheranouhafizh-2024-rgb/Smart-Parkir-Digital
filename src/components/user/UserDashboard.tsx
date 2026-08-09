@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Sliders, Scan, History, MapPin, Compass, CalendarCheck, User as UserIcon, Plus, X, AlertTriangle, Loader2, Camera, Check, Wallet, CheckCircle, Save, ImagePlus } from 'lucide-react';
-import { ParkingLocation, Booking, UserProfile, createDefaultProfile } from '../../types';
+import { Search, Sliders, Scan, History, MapPin, Compass, CalendarCheck, User as UserIcon, Plus, X, AlertTriangle, Loader2, Camera, Check, Wallet, CheckCircle, Save, ImagePlus, Shield, Receipt, Flag } from 'lucide-react';
+import { ParkingLocation, Booking, UserProfile, UserTransactionRecord, createDefaultProfile } from '../../types';
 import { getUserProfile, putUserProfile } from '../../db';
 import { syncProfileToSupabase } from '../../lib/supabase';
 
@@ -8,8 +8,13 @@ interface UserDashboardProps {
   locations: ParkingLocation[];
   walletBalance: number;
   activeBookings: Booking[];
+  userTransactions: UserTransactionRecord[];
+  reporterName: string;
+  reporterPhone: string;
   onSelectLocation: (loc: ParkingLocation) => void;
   onOpenScanner: () => void;
+  onOpenVerifyJukir: () => void;
+  onOpenLaporPungli: () => void;
   onShowHistory: () => void;
   onTopUp: (amount: number) => void;
   onLogout: () => void;
@@ -20,8 +25,13 @@ export default function UserDashboard({
   locations,
   walletBalance,
   activeBookings,
+  userTransactions,
+  reporterName,
+  reporterPhone,
   onSelectLocation,
   onOpenScanner,
+  onOpenVerifyJukir,
+  onOpenLaporPungli,
   onShowHistory,
   onTopUp,
   onLogout,
@@ -410,41 +420,58 @@ export default function UserDashboard({
         </div>
 
         {/* Quick Actions Bento Grid */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 mb-3">
           <button 
             onClick={handleScanAndParkClick}
-            className="bg-white/90 backdrop-blur-md rounded-2xl p-3 shadow-md border border-slate-200/40 flex flex-col items-center justify-center gap-1.5 hover:bg-slate-50 transition-all active:scale-95 group cursor-pointer"
+            className="bg-white/90 backdrop-blur-md rounded-2xl p-2.5 shadow-md border border-slate-200/40 flex flex-col items-center justify-center gap-1 hover:bg-slate-50 transition-all active:scale-95 group cursor-pointer"
           >
-            <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 transition-colors group-hover:bg-indigo-100">
-              <Scan size={18} />
+            <div className="w-9 h-9 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+              <Scan size={16} />
             </div>
-            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-tight">Scan & Park</span>
+            <span className="text-[9px] font-bold text-slate-700 uppercase tracking-tight text-center">Scan Gate</span>
           </button>
 
           <button 
-            onClick={handleHistoryMenuClick}
-            className="bg-white/90 backdrop-blur-md rounded-2xl p-3 shadow-md border border-slate-200/40 flex flex-col items-center justify-center gap-1.5 hover:bg-slate-50 transition-all active:scale-95 group cursor-pointer"
+            onClick={onOpenVerifyJukir}
+            className="bg-white/90 backdrop-blur-md rounded-2xl p-2.5 shadow-md border border-slate-200/40 flex flex-col items-center justify-center gap-1 hover:bg-slate-50 transition-all active:scale-95 cursor-pointer"
           >
-            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 transition-colors group-hover:bg-slate-200">
-              <History size={18} />
+            <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <Shield size={16} />
             </div>
-            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-tight">History</span>
+            <span className="text-[9px] font-bold text-slate-700 uppercase tracking-tight text-center">Cek Jukir</span>
           </button>
 
-          {/* Wallet Balance Card with Simulation Topup Trigger */}
+          <button 
+            onClick={onOpenLaporPungli}
+            className="bg-white/90 backdrop-blur-md rounded-2xl p-2.5 shadow-md border border-red-200/40 flex flex-col items-center justify-center gap-1 hover:bg-red-50 transition-all active:scale-95 cursor-pointer"
+          >
+            <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center text-red-600">
+              <Flag size={16} />
+            </div>
+            <span className="text-[9px] font-bold text-red-700 uppercase tracking-tight text-center">Lapor Pungli</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button 
+            onClick={handleHistoryMenuClick}
+            className="bg-white/90 backdrop-blur-md rounded-2xl p-2.5 shadow-md border border-slate-200/40 flex flex-col items-center justify-center gap-1 hover:bg-slate-50 transition-all active:scale-95 cursor-pointer"
+          >
+            <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+              <History size={16} />
+            </div>
+            <span className="text-[9px] font-bold text-slate-700 uppercase tracking-tight">Reservasi</span>
+          </button>
+
           <div 
             onClick={handleWalletClick}
-            className="bg-indigo-600 bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-2xl p-3 shadow-md shadow-indigo-500/20 flex flex-col items-start justify-center gap-1 cursor-pointer hover:from-indigo-700 hover:to-indigo-800 transition-all active:scale-95 group select-none"
-            title="Klik untuk buka Halaman Top Up Saldo"
+            className="bg-indigo-600 bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-2xl p-2.5 shadow-md flex flex-col items-start justify-center gap-0.5 cursor-pointer hover:from-indigo-700 transition-all active:scale-95"
           >
             <div className="flex justify-between items-center w-full">
-              <span className="text-[9px] font-bold uppercase tracking-widest text-indigo-100 opacity-90">Wallet</span>
-              <Plus size={12} className="text-indigo-100 opacity-70 group-hover:scale-125 transition-transform" />
+              <span className="text-[8px] font-bold uppercase tracking-widest text-indigo-100">Wallet</span>
+              <Plus size={10} className="text-indigo-100" />
             </div>
-            <span className="text-xs font-semibold text-indigo-100/95 leading-none">Saldo Ku</span>
-            <span className="text-sm font-black tracking-tight leading-none">
-              Rp {walletBalance.toLocaleString('id-ID')}
-            </span>
+            <span className="text-[10px] font-black tracking-tight">Rp {walletBalance.toLocaleString('id-ID')}</span>
           </div>
         </div>
       </div>
@@ -686,61 +713,78 @@ export default function UserDashboard({
           </div>
         )}
 
-        {/* TAB 3: BOOKINGS */}
+        {/* TAB 3: BOOKINGS + TRANSACTION HISTORY */}
         {activeTab === 'booking' && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider">Daftar Reservasi Parkir</h3>
-            {activeBookings.length > 0 ? (
-              <div className="space-y-3">
-                {activeBookings.map((b, idx) => (
-                  <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm relative">
-                    <span className={`absolute top-4 right-4 font-black text-[10px] px-2.5 py-1 rounded-lg uppercase tracking-wider ${
-                      b.status === 'CheckedIn' 
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-150 animate-pulse' 
-                        : 'bg-amber-50 text-amber-750 border border-amber-150'
-                    }`}>
-                      {b.status === 'Active' ? 'Belum Tiba' : b.status === 'CheckedIn' ? 'Sudah Tiba' : b.status}
-                    </span>
-                    <h4 className="text-sm font-extrabold text-slate-800 pr-16">{b.locationName}</h4>
-                    <p className="text-xs text-slate-400 mt-0.5 mb-3">{b.locationRegion}</p>
-                    <div className="grid grid-cols-3 gap-2 py-2 border-t border-b border-slate-100 text-center mb-3">
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Lantai</p>
-                        <p className="text-xs font-bold text-slate-800">{b.floor}</p>
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-3">Daftar Reservasi Parkir</h3>
+              {activeBookings.length > 0 ? (
+                <div className="space-y-3">
+                  {activeBookings.map((b, idx) => (
+                    <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm relative">
+                      <span className={`absolute top-4 right-4 font-black text-[10px] px-2.5 py-1 rounded-lg uppercase tracking-wider ${
+                        b.status === 'CheckedIn' 
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-150 animate-pulse' 
+                          : 'bg-amber-50 text-amber-750 border border-amber-150'
+                      }`}>
+                        {b.status === 'Active' ? 'Belum Tiba' : b.status === 'CheckedIn' ? 'Sudah Tiba' : b.status}
+                      </span>
+                      <h4 className="text-sm font-extrabold text-slate-800 pr-16">{b.locationName}</h4>
+                      <p className="text-xs text-slate-400 mt-0.5 mb-3">{b.locationRegion}</p>
+                      <div className="grid grid-cols-3 gap-2 py-2 border-t border-b border-slate-100 text-center mb-3">
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase">Lantai</p>
+                          <p className="text-xs font-bold text-slate-800">{b.floor}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase">Slot ID</p>
+                          <p className="text-xs font-bold text-indigo-600">{b.slotID}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase">Bayar</p>
+                          <p className="text-xs font-bold text-slate-800">{b.paymentMethod}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Slot ID</p>
-                        <p className="text-xs font-bold text-indigo-600">{b.slotID}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Batas Tiba</p>
-                        <p className="text-xs font-bold text-red-500">{b.batasTiba}</p>
-                      </div>
+                      <button 
+                        onClick={onShowHistory}
+                        className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-semibold text-xs py-2 rounded-xl border border-indigo-200 transition-colors"
+                      >
+                        Buka E-Tiket Digital (QR)
+                      </button>
                     </div>
-                    <button 
-                      onClick={onShowHistory}
-                      className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-semibold text-xs py-2 rounded-xl border border-indigo-200 transition-colors"
-                    >
-                      Buka QR Tiket Penerima
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="py-12 bg-white rounded-2xl border border-slate-200 text-center px-6">
-                <CalendarCheck className="mx-auto text-slate-300 mb-2" size={32} />
-                <p className="text-sm font-bold text-slate-700">Belum ada booking aktif</p>
-                <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
-                  Temukan lokasi terdekat di beranda dan pesan slot pertama Anda secara cashless.
-                </p>
-                <button 
-                  onClick={() => setActiveTab('home')}
-                  className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all"
-                >
-                  Cari Lokasi
-                </button>
-              </div>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 bg-white rounded-2xl border border-slate-200 text-center px-6 mb-4">
+                  <CalendarCheck className="mx-auto text-slate-300 mb-2" size={32} />
+                  <p className="text-sm font-bold text-slate-700">Belum ada booking aktif</p>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Receipt size={16} className="text-indigo-600" /> Riwayat Transaksi Pribadi
+              </h3>
+              {userTransactions.length > 0 ? (
+                <div className="space-y-2">
+                  {userTransactions.map((tx) => (
+                    <div key={tx.id} className="bg-white border border-slate-200 rounded-xl p-3 flex justify-between items-center">
+                      <div>
+                        <p className="text-xs font-black text-slate-800">{tx.location}</p>
+                        <p className="text-[10px] text-slate-400">{tx.plateNumber} • {tx.paymentMethod}</p>
+                        <p className="text-[9px] text-slate-400">{new Date(tx.createdAt).toLocaleString('id-ID')}</p>
+                      </div>
+                      <p className="text-sm font-black text-indigo-600">Rp {tx.amount.toLocaleString('id-ID')}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-6 bg-white rounded-2xl border border-slate-200 text-center">
+                  <p className="text-xs text-slate-400 font-semibold">Belum ada riwayat transaksi parkir</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

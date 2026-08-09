@@ -35,6 +35,23 @@ ParkWise dirancang sebagai prototype dashboard parkir digital yang menampilkan a
 
 ---
 
+## 🔄 Alur Penggunaan Aplikasi
+
+Berikut alur utama aplikasi ParkWise yang bisa dijelaskan secara singkat:
+
+1. User mencari lokasi parkir yang tersedia
+2. User memilih slot parkir dan melihat detail tarif serta status slot
+3. User melakukan pembayaran simulasi dan menerima tiket reservasi beserta QR code
+4. Petugas parkir memindai QR code melalui kamera untuk verifikasi booking
+5. Admin melihat status operasional parkir dan mengelola override slot jika diperlukan
+
+### Ringkasnya
+- Pengguna: cari lokasi → pilih slot → bayar → dapat tiket QR
+- Petugas: buka scanner → pindai QR → verifikasi check-in/check-out
+- Admin: pantau data parkir → atur status slot → kelola operasional
+
+---
+
 ## 🧰 Stack Teknologi
 - React 19
 - TypeScript

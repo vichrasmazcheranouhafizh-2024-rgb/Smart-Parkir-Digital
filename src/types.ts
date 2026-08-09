@@ -95,3 +95,156 @@ export function createDefaultProfile(): UserProfile {
     notificationEnabled: true,
   };
 }
+
+// ========================
+// Auth & Role Accounts
+// ========================
+
+export interface AuthAccount {
+  id: string;
+  email: string;
+  password: string;
+  role: Role;
+  fullName: string;
+  phone?: string;
+  createdAt: string;
+}
+
+export function createDefaultAccounts(): AuthAccount[] {
+  return [
+    {
+      id: 'acc-user-1',
+      email: 'user@parkwise.id',
+      password: 'user123',
+      role: 'user',
+      fullName: 'Warga Surabaya',
+      phone: '0812-0000-0001',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'acc-petugas-1',
+      email: 'petugas@parkwise.id',
+      password: 'petugas123',
+      role: 'petugas',
+      fullName: 'Budi Santoso',
+      phone: '0812-0000-0002',
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'acc-admin-1',
+      email: 'admin@parkwise.id',
+      password: 'admin123',
+      role: 'admin',
+      fullName: 'Admin Dishub Surabaya',
+      phone: '0812-0000-0003',
+      createdAt: new Date().toISOString(),
+    },
+  ];
+}
+
+// ========================
+// Jukir (Petugas) Profile
+// ========================
+
+export type KtaVerificationStatus = 'pending' | 'verified' | 'revoked';
+
+export interface JukirProfile {
+  id: string;
+  accountId: string;
+  ktaNumber: string;
+  fullName: string;
+  nik: string;
+  phone: string;
+  assignedZone: string;
+  assignedLocation: string;
+  photoUrl: string;
+  shift: 'Pagi' | 'Siang' | 'Malam';
+  verificationStatus: KtaVerificationStatus;
+  verifiedAt?: string;
+  joinedAt: string;
+}
+
+export function createDefaultJukirProfile(accountId = 'acc-petugas-1'): JukirProfile {
+  return {
+    id: 'jukir-profile-1',
+    accountId,
+    ktaNumber: 'KTA-SBY-2024-0042',
+    fullName: 'Budi Santoso',
+    nik: '3578123456789012',
+    phone: '0812-3456-7890',
+    assignedZone: 'Zone A',
+    assignedLocation: 'Tunjungan Plaza TP4',
+    photoUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDkFSbTrg5ap-VyXHwmAvGpre2aFBG6QpyOo-EiJIny5Y5tgh2o_yjDlJ9pJu9GDsSLbIM4cJ7YB6VMzZCMfP_Y88dTVJhjOIg0oPeQfFh-NfppovJGK8BVqYQ9cqCvUnzjzP4DjkV8dyGbw2WDBk_tJ9K8Xy0OQ07ninDjPpSMph__D4Ob_bzKe1yxq1ACt2b2CK4EIwqbYzTCZDr_kiIkd4DpRK-ia42IwlR6wErr3BjeJvAV26qtNWBg-6Bl9fz3KdbU2os1-ZYz',
+    shift: 'Pagi',
+    verificationStatus: 'verified',
+    verifiedAt: '15 Jan 2025',
+    joinedAt: '1 Jan 2024',
+  };
+}
+
+export function buildJukirQRPayload(profile: JukirProfile): string {
+  return `PARKWISE:JUKIR:${profile.ktaNumber}:${profile.fullName}`;
+}
+
+// ========================
+// Lapor Pungli
+// ========================
+
+export type PungliReportStatus = 'submitted' | 'reviewing' | 'dispatched' | 'resolved';
+
+export interface PungliReport {
+  id: string;
+  reporterName: string;
+  reporterPhone: string;
+  location: string;
+  region: string;
+  description: string;
+  photoUrl?: string;
+  latitude?: number;
+  longitude?: number;
+  status: PungliReportStatus;
+  submittedAt: string;
+  forwardedTo112: boolean;
+  forwardedToInstagram: boolean;
+}
+
+// ========================
+// Petugas Notifications
+// ========================
+
+export interface PetugasNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'verification' | 'info' | 'warning';
+  read: boolean;
+  createdAt: string;
+}
+
+export function createDefaultPetugasNotifications(): PetugasNotification[] {
+  return [
+    {
+      id: 'notif-1',
+      title: 'KTA Digital Terverifikasi',
+      message: 'Selamat! KTA Digital Anda (KTA-SBY-2024-0042) telah diverifikasi oleh Admin Dishub Surabaya.',
+      type: 'verification',
+      read: false,
+      createdAt: new Date().toISOString(),
+    },
+  ];
+}
+
+// ========================
+// User Transaction History (personal)
+// ========================
+
+export interface UserTransactionRecord {
+  id: string;
+  userId: string;
+  plateNumber: string;
+  location: string;
+  amount: number;
+  paymentMethod: string;
+  bookingID?: string;
+  createdAt: string;
+}

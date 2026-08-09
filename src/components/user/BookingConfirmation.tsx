@@ -121,11 +121,29 @@ export default function BookingConfirmation({ location, slot, onBack, onCheckout
               </div>
               <div className="flex-1">
                 <p className="text-xs font-extrabold text-slate-800">QRIS</p>
-                <p className="text-[10px] font-medium text-slate-400">Pembayaran Cepat & Terbuka</p>
+                <p className="text-[10px] font-medium text-slate-400">Pembayaran digital instan</p>
               </div>
               <input 
                 checked={paymentMethod === 'QRIS'} 
                 onChange={() => setPaymentMethod('QRIS')}
+                name="payment" 
+                type="radio"
+                className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-slate-300"
+              />
+            </label>
+
+            {/* Method: Tunai */}
+            <label className="flex items-center p-2.5 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors relative group">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mr-3 shrink-0 font-sans font-black text-[10px]">
+                CASH
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-extrabold text-slate-800">Tunai</p>
+                <p className="text-[10px] font-medium text-slate-400">Bayar langsung ke petugas parkir resmi</p>
+              </div>
+              <input 
+                checked={paymentMethod === 'Tunai'} 
+                onChange={() => setPaymentMethod('Tunai')}
                 name="payment" 
                 type="radio"
                 className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-slate-300"

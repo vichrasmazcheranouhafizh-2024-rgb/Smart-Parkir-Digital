@@ -1,22 +1,28 @@
 import React, { useMemo, useState } from 'react';
-import { Calendar, Download, TrendingUp, Users, Coins, FileText, LayoutGrid, BarChart3, ParkingCircle, Landmark, RefreshCw } from 'lucide-react';
+import { Calendar, Download, TrendingUp, Users, Coins, FileText, LayoutGrid, BarChart3, ParkingCircle, Landmark, RefreshCw, Shield, AlertTriangle, MapPin } from 'lucide-react';
 import { ParkingLocation, Transaction } from '../../types';
 import { isSupabaseConfigured } from '../../lib/supabase';
 
 interface AdminDashboardProps {
   locations: ParkingLocation[];
   transactions: Transaction[];
+  pungliCount: number;
   onNavigateToLots: () => void;
+  onNavigatePetugas: () => void;
+  onNavigatePungli: () => void;
   onLogout: () => void;
 }
 
 export default function AdminDashboard({
   locations,
   transactions,
+  pungliCount,
   onNavigateToLots,
+  onNavigatePetugas,
+  onNavigatePungli,
   onLogout
 }: AdminDashboardProps) {
-  const [activeMenu, setActiveMenu] = useState<'dashboard' | 'lots' | 'analytics' | 'payments'>('dashboard');
+const [activeMenu, setActiveMenu] = useState<'dashboard' | 'lots' | 'analytics' | 'payments' | 'petugas' | 'pungli'>('dashboard');
   const [reportMessage, setReportMessage] = useState('Laporan siap diunduh.');
   const [syncMessage, setSyncMessage] = useState(isSupabaseConfigured() ? 'Sinkronisasi Supabase aktif.' : 'Mode lokal aktif.');
 
@@ -29,6 +35,22 @@ export default function AdminDashboard({
     const totalReservations = Math.max(transactions.length + 20, occupiedSlots + transactions.length);
     const activeUsers = Math.max(1200, Math.round(transactions.length * 38 + occupiedSlots));
 
+    const padByRegion = locations.reduce<Record<string, { revenue: number; spots: number; occupancy: number }>>((acc, loc) => {
+      const regionRev = Math.round((loc.totalCapacity - loc.availableCount) * loc.ratePerHour * 2.5);
+      if (!acc[loc.region]) acc[loc.region] = { revenue: 0, spots: 0, occupancy: 0 };
+      acc[loc.region].revenue += regionRev;
+      acc[loc.region].spots += 1;
+      acc[loc.region].occupancy += loc.occupancyRate;
+      return acc;
+    }, {});
+
+    const padByLocation = locations.map((loc) => ({
+      name: loc.name,
+      region: loc.region,
+      revenue: Math.round((loc.totalCapacity - loc.availableCount) * loc.ratePerHour * 2.5),
+      occupancy: loc.occupancyRate,
+    }));
+
     return {
       totalCapacity,
       availableSlots,
@@ -37,6 +59,8 @@ export default function AdminDashboard({
       totalRevenue,
       totalReservations,
       activeUsers,
+      padByRegion,
+      padByLocation,
     };
   }, [locations, transactions]);
 
@@ -83,7 +107,23 @@ export default function AdminDashboard({
             }`}
           >
             <ParkingCircle size={16} />
-            <span>Manage Lots</span>
+            <span>Kelola Titik Parkir</span>
+          </button>
+
+          <button 
+            onClick={() => { setActiveMenu('petugas'); onNavigatePetugas(); }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+          >
+            <Shield size={16} />
+            <span>Verifikasi KTA Petugas</span>
+          </button>
+
+          <button 
+            onClick={() => { setActiveMenu('pungli'); onNavigatePungli(); }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+          >
+            <AlertTriangle size={16} />
+            <span>Laporan Pungli {pungliCount > 0 ? `(${pungliCount})` : ''}</span>
           </button>
 
           <button 
@@ -196,27 +236,64 @@ export default function AdminDashboard({
               </span>
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-none">Pendapatan Daerah (IDR)</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-none">Pendapatan Daerah (PAD)</p>
               <h3 className="text-2xl font-black text-slate-800 leading-none">Rp {metrics.totalRevenue.toLocaleString('id-ID')}</h3>
             </div>
           </div>
 
-          {/* Card 3: Active Users */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow">
+          {/* Card 3: Pungli Reports */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={onNavigatePungli}>
             <div className="flex justify-between items-start mb-4">
-              <div className="p-2 sm:p-2.5 bg-emerald-50 rounded-xl text-emerald-600">
-                <Users size={20} />
+              <div className="p-2 sm:p-2.5 bg-red-50 rounded-xl text-red-600">
+                <AlertTriangle size={20} />
               </div>
-              <span className="text-[10px] font-black text-slate-400 flex items-center bg-slate-100 px-2 py-1 rounded-full border uppercase tracking-widest gap-0.5">
-                • 0.0%
-              </span>
+              {pungliCount > 0 && (
+                <span className="text-[10px] font-black text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100 uppercase">
+                  {pungliCount} Laporan
+                </span>
+              )}
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-none">Pengguna Aktif Kota</p>
-              <h3 className="text-2xl font-black text-slate-800 leading-none">{metrics.activeUsers.toLocaleString('id-ID')}</h3>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 leading-none">Laporan Pungli</p>
+              <h3 className="text-2xl font-black text-slate-800 leading-none">{pungliCount}</h3>
             </div>
           </div>
+        </div>
 
+        {/* PAD Real-time per Wilayah */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <MapPin size={16} className="text-indigo-600" />
+            <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Rekap PAD Real-time per Wilayah</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {Object.entries(metrics.padByRegion).map(([region, data]) => (
+              <div key={region} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-extrabold text-slate-800">{region}</p>
+                <p className="text-lg font-black text-indigo-600 mt-1">Rp {data.revenue.toLocaleString('id-ID')}</p>
+                <p className="text-[10px] text-slate-500 mt-1">{data.spots} titik parkir • {Math.round(data.occupancy / data.spots)}% okupansi</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* PAD per Titik Parkir */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+          <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-4">PAD per Titik Parkir Resmi</h3>
+          <div className="space-y-2">
+            {metrics.padByLocation.map((loc) => (
+              <div key={loc.name} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50">
+                <div>
+                  <p className="text-xs font-extrabold text-slate-800">{loc.name}</p>
+                  <p className="text-[10px] text-slate-400">{loc.region}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-black text-indigo-600">Rp {loc.revenue.toLocaleString('id-ID')}</p>
+                  <p className="text-[10px] text-slate-400">{loc.occupancy}% terisi</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Bento grid panel layout */}

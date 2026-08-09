@@ -120,10 +120,14 @@ export default function PetugasScanner({ onBack, onVerifyCode }: PetugasScannerP
     if (!scannerRef.current) return;
 
     try {
+const scanner = scannerRef.current as unknown as {
+        turnOnTorch?: () => Promise<void>;
+        turnOffTorch?: () => Promise<void>;
+      };
       if (flashOn) {
-        await scannerRef.current.turnOffTorch();
+        await scanner.turnOffTorch?.();
       } else {
-        await scannerRef.current.turnOnTorch();
+        await scanner.turnOnTorch?.();
       }
       setFlashOn((prev) => !prev);
     } catch (err) {

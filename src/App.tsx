@@ -5,19 +5,22 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { INITIAL_LOCATIONS, INITIAL_LOGS, INITIAL_TRANSACTIONS } from './data';
-import { ParkingLocation, ParkingSlot, Booking, CheckInLog, Transaction, Role } from './types';
+import { ParkingLocation, ParkingSlot, Booking, CheckInLog, Transaction, Role, UserTransactionRecord, AuthAccount } from './types';
 import {
   db,
   addBooking as dbAddBooking,
   addCheckInLog as dbAddLog,
   addTransaction as dbAddTx,
+  addUserTransaction as dbAddUserTx,
   getActiveBookings as dbGetActiveBookings,
   getCheckInLogs as dbGetLogs,
   getTransactions as dbGetTransactions,
+  getUserTransactions as dbGetUserTransactions,
   getBookingByID,
   updateBookingStatus,
   updateLogDirection,
   seedIfEmpty,
+  getPungliReports,
 } from './db';
 import { syncSnapshotToSupabase, isSupabaseConfigured, syncBookingToSupabase } from './lib/supabase';
 
@@ -25,7 +28,7 @@ import { syncSnapshotToSupabase, isSupabaseConfigured, syncBookingToSupabase } f
 import {
   SplashView,
   OnboardingView,
-  LoginView,
+  RoleLoginView,
   UserDashboard,
   SlotSelection,
   BookingConfirmation,
@@ -34,24 +37,42 @@ import {
   PetugasScanner,
   AdminDashboard,
   AdminSlotOverride,
-  RoleSelector
+  RoleSelector,
+  RoleHomeView,
+  VerifyJukirView,
+  LaporPungliView,
+  JukirProfileView,
+  AdminPetugasManage,
+  AdminPungliCenter,
 } from './components';
 
-type AppState = 
-  | 'splash' 
-  | 'onboarding' 
-  | 'login' 
-  | 'dashboard' 
-  | 'slot_selection' 
-  | 'booking_confirmation' 
-  | 'success_ticket' 
-  | 'petugas_scanner' 
-  | 'admin_lots';
+type AppState =
+  | 'splash'
+  | 'onboarding'
+  | 'role_selection'
+  | 'login'
+  | 'dashboard'
+  | 'slot_selection'
+  | 'booking_confirmation'
+  | 'success_ticket'
+  | 'petugas_scanner'
+  | 'user_verify_jukir'
+  | 'user_lapor_pungli'
+  | 'petugas_profile'
+  | 'admin_lots'
+  | 'admin_petugas'
+  | 'admin_pungli';
 
 export default function App() {
   // State Machine routing
-  const [appState, setAppState] = useState<AppState>('splash');
+const [appState, setAppState] = useState<AppState>('splash');
   const [currentRole, setCurrentRole] = useState<Role>('user');
+  const [selectedRoleForLogin, setSelectedRoleForLogin] = useState<Role>('user');
+  const [authAccount, setAuthAccount] = useState<AuthAccount | null>(null);
+  const [userTransactions, setUserTransactions] = useState<UserTransactionRecord[]>([]);
+  const [pungliReportsCount, setPungliReportsCount] = useState(0);
+  const [reporterName, setReporterName] = useState('Warga Surabaya');
+  const [reporterPhone, setReporterPhone] = useState('0812-0000-0001');
   
   // Persistent Database Collections (synced with IndexedDB)
   const [locations, setLocations] = useState<ParkingLocation[]>(INITIAL_LOCATIONS);
@@ -79,10 +100,12 @@ export default function App() {
         await seedIfEmpty(INITIAL_LOGS, INITIAL_TRANSACTIONS);
 
         // Load persisted data
-        const [savedLogs, savedTx, savedBookings] = await Promise.all([
+        const [savedLogs, savedTx, savedBookings, savedUserTx, savedPungliReports] = await Promise.all([
           dbGetLogs(),
           dbGetTransactions(),
           dbGetActiveBookings(),
+          dbGetUserTransactions('user-profile'),
+          getPungliReports(),
         ]);
         
         if (savedLogs.length > 0) setLogs(savedLogs);
@@ -91,6 +114,8 @@ export default function App() {
           setActiveBookings(savedBookings);
           setLatestBooking(savedBookings[savedBookings.length - 1]);
         }
+        if (savedUserTx.length > 0) setUserTransactions(savedUserTx);
+        setPungliReportsCount(savedPungliReports.length);
         
         setDbReady(true);
       } catch (err) {
@@ -137,8 +162,20 @@ export default function App() {
       location: 'Wallet Top Up (Simulasi)',
       timeAgo: 'Baru Saja'
     };
+    const userTx: UserTransactionRecord = {
+      id: `UTX-${Date.now()}`,
+      userId: 'user-profile',
+      plateNumber: 'L 1234 AB',
+      location: 'Top Up E-Wallet',
+      amount,
+      paymentMethod: 'QRIS',
+      createdAt: new Date().toISOString(),
+    };
     setTransactions(prev => [newTx, ...prev]);
-    if (dbReady) await dbAddTx(newTx);
+    setUserTransactions(prev => [userTx, ...prev]);
+    if (dbReady) {
+      await Promise.all([dbAddTx(newTx), dbAddUserTx(userTx)]);
+    }
     alert(`E-wallet Anda sukses diisi sebesar Rp${amount.toLocaleString('id-ID')} !`);
   }, [dbReady]);
 
@@ -213,7 +250,18 @@ export default function App() {
       location: selectedLocation.name,
       timeAgo: 'Baru Saja'
     };
+    const userTx: UserTransactionRecord = {
+      id: `UTX-${Date.now()}`,
+      userId: 'user-profile',
+      plateNumber: 'L 1234 AB',
+      location: selectedLocation.name,
+      amount: totalAmount,
+      paymentMethod: paymentMethod,
+      bookingID: bookingID,
+      createdAt: new Date().toISOString(),
+    };
     setTransactions(prev => [newTx, ...prev]);
+    setUserTransactions(prev => [userTx, ...prev]);
 
     // Create Municipal Officer Check-In Log
     const newLog: CheckInLog = {
@@ -233,6 +281,7 @@ export default function App() {
       await Promise.all([
         dbAddBooking(newBooking),
         dbAddTx(newTx),
+        dbAddUserTx(userTx),
         dbAddLog(newLog),
       ]);
     }
@@ -370,15 +419,30 @@ export default function App() {
         return <SplashView onComplete={() => setAppState('onboarding')} />;
       
       case 'onboarding':
-        return <OnboardingView onComplete={() => setAppState('login')} />;
+        return <OnboardingView onComplete={() => setAppState('role_selection')} />;
+
+      case 'role_selection':
+        return (
+          <RoleHomeView
+            onSelectRole={(role) => {
+setSelectedRoleForLogin(role);
+              setCurrentRole(role);
+              setAppState('login');
+            }}
+          />
+        );
       
       case 'login':
         return (
-          <LoginView 
-            onLogin={(role) => {
-              setCurrentRole(role);
+          <RoleLoginView
+            role={selectedRoleForLogin}
+            onBack={() => setAppState('role_selection')}
+            onLogin={(account) => {
+              setAuthAccount(account);
+              setCurrentRole(account.role);
+              setSelectedRoleForLogin(account.role);
               setAppState('dashboard');
-            }} 
+            }}
           />
         );
 
@@ -389,6 +453,9 @@ export default function App() {
               locations={locations}
               walletBalance={walletBalance}
               activeBookings={activeBookings}
+              userTransactions={userTransactions}
+              reporterName={reporterName}
+              reporterPhone={reporterPhone}
               onSelectLocation={(loc) => {
                 setSelectedLocation(loc);
                 setAppState('slot_selection');
@@ -396,6 +463,8 @@ export default function App() {
               onOpenScanner={() => {
                 alert('Membuka akses Kamera... Pindai tiket masuk Anda.');
               }}
+              onOpenVerifyJukir={() => setAppState('user_verify_jukir')}
+              onOpenLaporPungli={() => setAppState('user_lapor_pungli')}
               onShowHistory={() => {
                 if (latestBooking) {
                   setAppState('success_ticket');
@@ -404,7 +473,7 @@ export default function App() {
                 }
               }}
               onTopUp={handleWalletTopUp}
-              onLogout={() => setAppState('login')}
+              onLogout={() => setAppState('role_selection')}
               onCheckInBooking={handleCheckInBooking}
             />
           );
@@ -412,12 +481,14 @@ export default function App() {
           return (
             <PetugasDashboard 
               logs={logs}
+              transactions={transactions}
               availableCount={42}
               totalCapacity={120}
               onOpenScanner={() => setAppState('petugas_scanner')}
+              onOpenProfile={() => setAppState('petugas_profile')}
               onTriggerCheckIn={handleTriggerCheckIn}
               onTriggerCheckOut={handleTriggerCheckOut}
-              onLogout={() => setAppState('login')}
+              onLogout={() => setAppState('role_selection')}
             />
           );
         } else {
@@ -425,6 +496,7 @@ export default function App() {
             <AdminDashboard 
               locations={locations}
               transactions={transactions}
+              pungliCount={pungliReportsCount}
               onNavigateToLots={() => {
                 const firstLocation = locations[0];
                 if (firstLocation) {
@@ -432,7 +504,9 @@ export default function App() {
                 }
                 setAppState('admin_lots');
               }}
-              onLogout={() => setAppState('login')}
+              onNavigatePetugas={() => setAppState('admin_petugas')}
+              onNavigatePungli={() => setAppState('admin_pungli')}
+              onLogout={() => setAppState('role_selection')}
             />
           );
         }
@@ -487,6 +561,25 @@ export default function App() {
           />
         );
 
+      case 'user_verify_jukir':
+        return <VerifyJukirView onBack={() => setAppState('dashboard')} />;
+
+      case 'user_lapor_pungli':
+        return (
+          <LaporPungliView
+            reporterName={reporterName}
+            reporterPhone={reporterPhone}
+            onBack={() => setAppState('dashboard')}
+            onSubmitted={() => {
+              setPungliReportsCount(prev => prev + 1);
+              setAppState('dashboard');
+            }}
+          />
+        );
+
+      case 'petugas_profile':
+        return <JukirProfileView accountId="acc-petugas-1" onBack={() => setAppState('dashboard')} />;
+
       case 'admin_lots':
         if (selectedLocation) {
           return (
@@ -494,12 +587,18 @@ export default function App() {
               location={selectedLocation}
               onBack={() => setAppState('dashboard')}
               onApplyOverride={handleApplyOverride}
-              onLogout={() => setAppState('login')}
+              onLogout={() => setAppState('role_selection')}
             />
           );
         }
         setAppState('dashboard');
         return null;
+
+      case 'admin_petugas':
+        return <AdminPetugasManage onBack={() => setAppState('dashboard')} />;
+
+      case 'admin_pungli':
+        return <AdminPungliCenter onBack={() => setAppState('dashboard')} />;
 
       default:
         return <SplashView onComplete={() => setAppState('onboarding')} />;
