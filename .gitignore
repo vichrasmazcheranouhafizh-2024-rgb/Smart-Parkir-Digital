@@ -12,3 +12,8 @@ coverage/
 !.env.example
 
 .vercel
+
+# Cursor AI Files
+.cursor/
+.cursorrules
+.git/cursor/
