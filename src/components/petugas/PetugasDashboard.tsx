@@ -37,7 +37,7 @@ export default function PetugasDashboard({
   }, [transactions, logs]);
 
   return (
-    <div className="flex-grow flex flex-col relative w-full h-[850px] max-w-md mx-auto bg-slate-50 md:shadow-2xl md:rounded-3xl overflow-hidden pb-16 border border-slate-100">
+    <div className="flex-grow flex flex-col relative w-full h-[100dvh] md:h-[850px] max-w-md mx-auto bg-slate-50 md:shadow-2xl md:rounded-3xl overflow-hidden pb-16 border border-slate-100">
       <header className="bg-white w-full border-b border-slate-100 flex justify-between items-center px-4 py-4 shrink-0 shadow-sm">
         <div className="flex items-center gap-1.5">
           <span className="p-1 px-2.5 bg-indigo-600 rounded-xl text-white text-lg font-black leading-none">P</span>

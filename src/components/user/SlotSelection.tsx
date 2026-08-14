@@ -27,7 +27,7 @@ export default function SlotSelection({ location, onBack, onConfirmSlot }: SlotS
   };
 
   return (
-    <div className="flex-1 flex flex-col relative w-full h-[850px] max-w-md mx-auto bg-white md:shadow-2xl md:rounded-3xl overflow-hidden select-none">
+    <div className="flex-1 flex flex-col relative w-full h-[100dvh] md:h-[850px] max-w-md mx-auto bg-white md:shadow-2xl md:rounded-3xl overflow-hidden select-none">
       
       {/* Top Header Navigation bar */}
       <header className="w-full bg-white text-blue-600 border-b border-slate-100 flex justify-between items-center px-4 py-4 shrink-0 shadow-sm">

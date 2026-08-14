@@ -87,7 +87,7 @@ export default function SuccessTicket({ booking, onGoHome }: SuccessTicketProps)
   }, [booking]);
 
   return (
-    <div className="flex-grow flex flex-col justify-center px-4 py-8 max-w-md mx-auto w-full select-none relative overflow-hidden bg-slate-50 min-h-[850px] shadow-2xl rounded-3xl border">
+    <div className="flex-grow flex flex-col justify-center px-4 py-8 max-w-md mx-auto w-full select-none relative overflow-hidden bg-slate-50 min-h-[100dvh] md:h-[850px] shadow-2xl rounded-3xl border">
       <div className="absolute top-0 left-0 w-full h-64 bg-indigo-600/5 rounded-b-[50%] blur-3xl -z-10" />
       <div className="absolute bottom-0 right-0 w-64 h-64 bg-indigo-200/10 rounded-full blur-3xl -z-10" />
 

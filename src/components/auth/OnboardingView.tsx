@@ -112,7 +112,7 @@ export default function OnboardingView({ onComplete }: OnboardingViewProps) {
   };
 
   return (
-    <div id="onboarding-container" className="flex-1 flex flex-col relative w-full h-[850px] max-w-md mx-auto bg-[#faf8ff] md:shadow-2xl md:rounded-3xl overflow-hidden border border-slate-100">
+    <div id="onboarding-container" className="flex-1 flex flex-col relative w-full h-[100dvh] md:h-[850px] max-w-md mx-auto bg-[#faf8ff] md:shadow-2xl md:rounded-3xl overflow-hidden border border-slate-100">
       
       {/* Header Actions */}
       <header className="w-full flex justify-between items-center px-6 py-4 absolute top-0 z-20">

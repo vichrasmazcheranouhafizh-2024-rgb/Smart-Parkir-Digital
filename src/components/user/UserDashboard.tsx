@@ -347,7 +347,7 @@ export default function UserDashboard({
   };
 
   return (
-    <div className="flex-1 flex flex-col relative w-full h-[850px] max-w-md mx-auto bg-slate-50 md:shadow-2xl md:rounded-3xl overflow-hidden pb-16">
+    <div className="flex-1 flex flex-col relative w-full h-[100dvh] md:h-[850px] max-w-md mx-auto bg-slate-50 md:shadow-2xl md:rounded-3xl overflow-hidden pb-16">
       
       {/* Search Header Wrapper with City Map Background Overlay */}
       <div className="relative pt-12 pb-6 px-4 bg-gradient-to-b from-indigo-50 to-slate-50/50 border-b border-slate-100 shadow-sm">

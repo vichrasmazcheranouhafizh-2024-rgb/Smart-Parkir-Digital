@@ -23,7 +23,7 @@ export default function BookingConfirmation({ location, slot, onBack, onCheckout
   };
 
   return (
-    <div className="flex-grow flex flex-col justify-start relative w-full h-[850px] max-w-md mx-auto bg-slate-50 md:shadow-2xl md:rounded-3xl overflow-hidden pb-24 border border-slate-100">
+    <div className="flex-grow flex flex-col justify-start relative w-full h-[100dvh] md:h-[850px] max-w-md mx-auto bg-slate-50 md:shadow-2xl md:rounded-3xl overflow-hidden pb-24 border border-slate-100">
       
       {/* Top App Bar Headers */}
       <header className="bg-white w-full top-0 border-b border-slate-100 flex justify-between items-center px-4 py-4 sticky z-40 shadow-sm">

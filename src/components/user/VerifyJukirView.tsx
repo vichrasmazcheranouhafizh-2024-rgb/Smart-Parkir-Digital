@@ -63,7 +63,7 @@ export default function VerifyJukirView({ onBack }: VerifyJukirViewProps) {
   useEffect(() => () => { streamRef.current?.getTracks().forEach((t) => t.stop()); }, []);
 
   return (
-    <div className="flex-grow flex flex-col max-w-md mx-auto w-full h-[850px] bg-slate-50 md:rounded-3xl overflow-hidden">
+    <div className="flex-grow flex flex-col max-w-md mx-auto w-full h-[100dvh] md:h-[850px] bg-slate-50 md:rounded-3xl overflow-hidden">
       <header className="bg-white border-b border-slate-100 px-4 py-4 flex items-center gap-3">
         <button onClick={onBack} className="p-1.5 rounded-full hover:bg-slate-100"><ArrowLeft size={18} /></button>
         <div>
