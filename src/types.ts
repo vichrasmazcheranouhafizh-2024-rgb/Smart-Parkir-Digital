@@ -1,14 +1,19 @@
 export type Role = 'guest' | 'user' | 'petugas' | 'admin';
 
+export type SlotStatus = 'Available' | 'Occupied' | 'Booked' | 'Selected' | 'Maintenance' | 'IllegalBlock';
+
 export interface ParkingSlot {
   slotID: string;
-  zone: 'A' | 'B';
-  type: 'Regular' | 'VIP';
-  status: 'Available' | 'Occupied' | 'Booked' | 'Selected';
+  zone: 'A' | 'B' | 'C' | 'Street';
+  type: 'Regular' | 'VIP' | 'Disabled' | 'Illegal';
+  status: SlotStatus;
   vehiclePlate?: string;
   distanceToLift: number;
   covered: boolean;
   ratePerHour: number;
+  lat?: number;
+  lng?: number;
+  slotLabel?: string; // e.g. "empty", "booked", "maintenance", "ILEGAL bloc empty"
 }
 
 export interface ParkingLocation {
@@ -27,6 +32,9 @@ export interface ParkingLocation {
   longitude: number;
   slots: ParkingSlot[];
   category?: 'off-street' | 'in-street';
+  assignedJukirName?: string;
+  assignedJukirKTA?: string;
+  vehicleTypes?: ('car' | 'motorcycle')[];
 }
 
 export interface Booking {
@@ -42,8 +50,11 @@ export interface Booking {
   estimatedArrival: string; // "10 Min" | "20 Min" | "30 Min"
   paymentMethod: string;
   bookingTime: string; // Date ISO string
-  status: 'Active' | 'CheckedIn' | 'Completed' | 'Cancelled';
+  status: 'Active' | 'CheckedIn' | 'Completed' | 'Cancelled' | 'Refunded';
   batasTiba: string; // "14:30 WIB"
+  batasTibaTimestamp?: number; // Epoch milliseconds for live timer
+  refundedAmount?: number;
+  refundTime?: string;
 }
 
 export interface CheckInLog {
@@ -64,6 +75,9 @@ export interface Transaction {
   amount: number;
   timeAgo: string;
   vehicleType: 'car' | 'motorcycle';
+  type?: 'Payment' | 'Refund' | 'TopUp';
+  status?: 'Success' | 'Refunded' | 'Pending';
+  timestamp?: string;
 }
 
 export interface UserProfile {
@@ -100,6 +114,8 @@ export function createDefaultProfile(): UserProfile {
 // Auth & Role Accounts
 // ========================
 
+export type AccountApprovalStatus = 'approved' | 'pending' | 'rejected';
+
 export interface AuthAccount {
   id: string;
   email: string;
@@ -108,6 +124,12 @@ export interface AuthAccount {
   fullName: string;
   phone?: string;
   createdAt: string;
+  approvalStatus?: AccountApprovalStatus;
+  assignedLocationId?: string;
+  assignedLocationName?: string;
+  nik?: string;
+  ktaNumber?: string;
+  shift?: 'Pagi' | 'Siang' | 'Malam';
 }
 
 export function createDefaultAccounts(): AuthAccount[] {
@@ -120,6 +142,7 @@ export function createDefaultAccounts(): AuthAccount[] {
       fullName: 'Warga Surabaya',
       phone: '0812-0000-0001',
       createdAt: new Date().toISOString(),
+      approvalStatus: 'approved',
     },
     {
       id: 'acc-petugas-1',
@@ -127,8 +150,14 @@ export function createDefaultAccounts(): AuthAccount[] {
       password: 'petugas123',
       role: 'petugas',
       fullName: 'Budi Santoso',
-      phone: '0812-0000-0002',
+      phone: '0812-3456-7890',
       createdAt: new Date().toISOString(),
+      approvalStatus: 'approved',
+      assignedLocationId: 'tunjungan_plaza',
+      assignedLocationName: 'Tunjungan Plaza TP4',
+      ktaNumber: 'KTA-SBY-2024-0042',
+      nik: '3578123456789012',
+      shift: 'Pagi',
     },
     {
       id: 'acc-admin-1',
@@ -138,6 +167,7 @@ export function createDefaultAccounts(): AuthAccount[] {
       fullName: 'Admin Dishub Surabaya',
       phone: '0812-0000-0003',
       createdAt: new Date().toISOString(),
+      approvalStatus: 'approved',
     },
   ];
 }
@@ -146,7 +176,7 @@ export function createDefaultAccounts(): AuthAccount[] {
 // Jukir (Petugas) Profile
 // ========================
 
-export type KtaVerificationStatus = 'pending' | 'verified' | 'revoked';
+export type KtaVerificationStatus = 'pending' | 'verified' | 'revoked' | 'rejected';
 
 export interface JukirProfile {
   id: string;
@@ -157,6 +187,7 @@ export interface JukirProfile {
   phone: string;
   assignedZone: string;
   assignedLocation: string;
+  assignedLocationId?: string;
   photoUrl: string;
   shift: 'Pagi' | 'Siang' | 'Malam';
   verificationStatus: KtaVerificationStatus;
@@ -174,6 +205,7 @@ export function createDefaultJukirProfile(accountId = 'acc-petugas-1'): JukirPro
     phone: '0812-3456-7890',
     assignedZone: 'Zone A',
     assignedLocation: 'Tunjungan Plaza TP4',
+    assignedLocationId: 'tunjungan_plaza',
     photoUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDkFSbTrg5ap-VyXHwmAvGpre2aFBG6QpyOo-EiJIny5Y5tgh2o_yjDlJ9pJu9GDsSLbIM4cJ7YB6VMzZCMfP_Y88dTVJhjOIg0oPeQfFh-NfppovJGK8BVqYQ9cqCvUnzjzP4DjkV8dyGbw2WDBk_tJ9K8Xy0OQ07ninDjPpSMph__D4Ob_bzKe1yxq1ACt2b2CK4EIwqbYzTCZDr_kiIkd4DpRK-ia42IwlR6wErr3BjeJvAV26qtNWBg-6Bl9fz3KdbU2os1-ZYz',
     shift: 'Pagi',
     verificationStatus: 'verified',
@@ -206,6 +238,7 @@ export interface PungliReport {
   submittedAt: string;
   forwardedTo112: boolean;
   forwardedToInstagram: boolean;
+  officerNotes?: string;
 }
 
 // ========================
@@ -247,4 +280,6 @@ export interface UserTransactionRecord {
   paymentMethod: string;
   bookingID?: string;
   createdAt: string;
+  type?: 'Payment' | 'Refund' | 'TopUp';
+  status?: 'Success' | 'Refunded';
 }

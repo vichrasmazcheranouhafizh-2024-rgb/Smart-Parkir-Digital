@@ -23,6 +23,8 @@ export { default as AdminDashboard } from './admin/AdminDashboard';
 export { default as AdminSlotOverride } from './admin/AdminSlotOverride';
 export { default as AdminPetugasManage } from './admin/AdminPetugasManage';
 export { default as AdminPungliCenter } from './admin/AdminPungliCenter';
+export { default as AdminAnalyticsView } from './admin/AdminAnalyticsView';
+export { default as AdminPaymentView } from './admin/AdminPaymentView';
 
 // Common / Shared Components
 export { default as RoleSelector } from './common/RoleSelector';

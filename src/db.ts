@@ -43,7 +43,7 @@ db.version(2).stores({
   checkInLogs: 'id, plateNumber, bookingID, direction, time',
   transactions: 'id, plateNumber, location, amount',
   userProfiles: 'id, username, email, phone, vehiclePlate',
-  accounts: 'id, email, role, createdAt',
+  accounts: 'id, email, role, createdAt, approvalStatus',
   jukirProfiles: 'id, accountId, ktaNumber, verificationStatus',
   pungliReports: 'id, status, submittedAt, region',
   petugasNotifications: 'id, read, createdAt',
@@ -72,8 +72,15 @@ export async function getBookingByID(bookingID: string): Promise<Booking | undef
   return await db.bookings.get(bookingID);
 }
 
-export async function updateBookingStatus(bookingID: string, status: Booking['status']): Promise<void> {
-  await db.bookings.update(bookingID, { status });
+export async function updateBookingStatus(
+  bookingID: string,
+  status: Booking['status'],
+  extra?: { refundedAmount?: number; refundTime?: string }
+): Promise<void> {
+  await db.bookings.update(bookingID, {
+    status,
+    ...(extra || {}),
+  });
 }
 
 // ========================
@@ -101,7 +108,7 @@ export async function addTransaction(tx: Transaction): Promise<string> {
 }
 
 export async function getTransactions(): Promise<Transaction[]> {
-  return await db.transactions.toArray();
+  return (await db.transactions.toArray()).reverse();
 }
 
 // ========================
@@ -133,6 +140,10 @@ export async function addAccount(account: AuthAccount): Promise<string> {
   return await db.accounts.add({ ...account, email: account.email.toLowerCase() });
 }
 
+export async function updateAccountApproval(id: string, status: AuthAccount['approvalStatus']): Promise<void> {
+  await db.accounts.update(id, { approvalStatus: status });
+}
+
 export async function updateAccountPassword(email: string, password: string): Promise<void> {
   const acc = await getAccountByEmail(email);
   if (acc) await db.accounts.update(acc.id, { password });
@@ -142,11 +153,14 @@ export async function authenticateAccount(
   email: string,
   password: string,
   expectedRole?: AuthAccount['role']
-): Promise<AuthAccount | null> {
+): Promise<{ account?: AuthAccount; error?: 'not_found' | 'invalid_password' | 'wrong_role' | 'pending_approval' | 'rejected' }> {
   const acc = await getAccountByEmail(email);
-  if (!acc || acc.password !== password) return null;
-  if (expectedRole && acc.role !== expectedRole) return null;
-  return acc;
+  if (!acc) return { error: 'not_found' };
+  if (acc.password !== password) return { error: 'invalid_password' };
+  if (expectedRole && acc.role !== expectedRole) return { error: 'wrong_role' };
+  if (acc.approvalStatus === 'pending') return { error: 'pending_approval' };
+  if (acc.approvalStatus === 'rejected') return { error: 'rejected' };
+  return { account: acc };
 }
 
 // ========================
@@ -194,8 +208,11 @@ export async function getPungliReports(): Promise<PungliReport[]> {
   return await db.pungliReports.orderBy('submittedAt').reverse().toArray();
 }
 
-export async function updatePungliStatus(id: string, status: PungliReport['status']): Promise<void> {
-  await db.pungliReports.update(id, { status });
+export async function updatePungliStatus(id: string, status: PungliReport['status'], notes?: string): Promise<void> {
+  await db.pungliReports.update(id, {
+    status,
+    ...(notes ? { officerNotes: notes } : {}),
+  });
 }
 
 // ========================
